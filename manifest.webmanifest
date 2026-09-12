@@ -1,0 +1,19 @@
+{
+  "name": "Radar — Fahrrad-Frontpage",
+  "short_name": "Radar",
+  "description": "Alles Neue aus der Fahrrad-Szene aus 199 Quellen, gefiltert und sortiert, mit Rennkalender.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f6f4",
+  "theme_color": "#f6f6f4",
+  "categories": ["news", "sports"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

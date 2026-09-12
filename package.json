@@ -1,0 +1,14 @@
+{
+  "name": "radar-web",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Radar — die Fahrrad-Frontpage als Web-App auf GitHub Pages",
+  "dependencies": {
+    "fast-xml-parser": "^5.10.1"
+  },
+  "scripts": {
+    "build": "node build/fetch.mjs",
+    "serve": "node --run build && npx --yes serve app"
+  }
+}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<!-- viewport-fit=cover: Ohne das bleiben oben und unten am iPhone graue
+     Balken stehen, und die App sieht sofort nach Webseite aus. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Radar</title>
+<meta name="description" content="Die Frontpage der Fahrrad-Szene: 199 Quellen, gefiltert und sortiert.">
+
+<!-- Vollbild ohne Browser-Leiste, sobald die App auf dem Startbildschirm
+     liegt. Das erste Meta ist der iOS-Weg, das zweite der neue Standard. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Radar">
+<!-- „default" statt „black-translucent": Dann färbt iOS den Bereich der
+     Statusleiste mit theme-color, und das passt sich unten hell/dunkel an. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121214" media="(prefers-color-scheme: dark)">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <div class="brand">
+    <h1>Radar</h1>
+    <p class="subline" id="subline">wird geladen …</p>
+  </div>
+  <button class="round" id="btn-cal" aria-label="Termine">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    <span class="badge" id="cal-badge" hidden></span>
+  </button>
+  <button class="round" id="btn-set" aria-label="Einstellungen">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M21.4 12h-3M5.6 12h-3M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1M18.6 18.6l-2.1-2.1M7.5 7.5L5.4 5.4"/></svg>
+  </button>
+  <div class="track" id="track" hidden><div class="bar" id="bar"></div></div>
+</header>
+
+<nav class="chips" id="chips" aria-label="Rubriken"></nav>
+
+<main id="scroller">
+  <div class="pull" id="pull"><span id="pull-label">Zum Aktualisieren ziehen</span></div>
+  <div id="content"></div>
+  <footer class="colophon" id="colophon"></footer>
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-head">
+    <div>
+      <h2 id="sheet-title">Termine</h2>
+      <p class="sheet-sub" id="sheet-sub"></p>
+    </div>
+    <button class="text-btn" id="sheet-close">Fertig</button>
+  </div>
+  <div class="sheet-body" id="sheet-body"></div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
