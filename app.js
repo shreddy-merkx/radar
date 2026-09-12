@@ -7,12 +7,12 @@
  * nicht mehr aus ~200 Einzelabrufen auf dem Handy, sondern aus einer fertigen
  * Datei, die GitHub alle 30 Minuten baut (build/fetch.mjs).
  */
-import { localDigest } from './lib/localFilter.js';
-import { SOURCES, TOPICS, TOPIC_BY_ID } from './lib/sources.js';
+import { localDigest } from './localFilter.js';
+import { SOURCES, TOPICS, TOPIC_BY_ID } from './sources.js';
 import {
   COMPILED_ON, countdownLabel, formatRange, groupByMonth,
   parseDay, soon, stateOf, upcoming,
-} from './lib/events.js';
+} from './events.js';
 
 const KEY = 'radar.settings.v3';
 const DIGEST_URL = 'data/digest.json';

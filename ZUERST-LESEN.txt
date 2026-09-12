@@ -1,0 +1,27 @@
+RADAR — was zu tun ist
+======================
+
+Beim ersten Hochladen sind die Unterordner verlorengegangen. Deshalb ist das
+Projekt jetzt so gebaut, dass alle Dateien flach nebeneinander liegen. Das
+kann nicht mehr schiefgehen.
+
+DREI SCHRITTE:
+
+1) Alle Dateien aus diesem Ordner bei GitHub hochladen
+   (Add file -> Upload files, alles reinziehen, Commit changes).
+   Sie ueberschreiben die alten. Danach im Projekt loeschen, falls vorhanden:
+   "download" und "build.yml"  -- die gehoeren da nicht hin.
+
+2) Die eine Datei, die in einen Ordner MUSS:
+   Add file -> Create new file
+   Als Namen genau eintippen:   .github/workflows/build.yml
+   Dann "build-yml-ZUM-KOPIEREN.txt" hier im Ordner doppelklicken,
+   alles markieren (Strg+A), kopieren (Strg+C), bei GitHub einfuegen.
+   Commit changes.
+
+   ERST DANACH steht ueberhaupt etwas unter "Actions".
+
+3) Settings -> Pages -> bei "Source" auf "GitHub Actions" umstellen.
+   Dann Actions -> Radar bauen und veroeffentlichen -> Run workflow.
+
+Ausfuehrlich steht alles in README.md.

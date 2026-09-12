@@ -28,13 +28,13 @@ const SHELL = [
   'index.html',
   'styles.css',
   'app.js',
-  'lib/localFilter.js',
-  'lib/sources.js',
-  'lib/events.js',
+  'localFilter.js',
+  'sources.js',
+  'events.js',
   'manifest.webmanifest',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/apple-touch-icon.png',
+  'icon-192.png',
+  'icon-512.png',
+  'apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {

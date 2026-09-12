@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
-import { mentionsBelt } from '../app/lib/localFilter.js';
+import { mentionsBelt } from './localFilter.js';
                                                
 
 const parser = new XMLParser({

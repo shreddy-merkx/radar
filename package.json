@@ -8,7 +8,7 @@
     "fast-xml-parser": "^5.10.1"
   },
   "scripts": {
-    "build": "node build/fetch.mjs",
-    "serve": "node --run build && npx --yes serve app"
+    "build": "node fetch.mjs",
+    "serve": "node --run build && npx --yes serve ."
   }
 }

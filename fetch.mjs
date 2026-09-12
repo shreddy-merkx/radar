@@ -18,11 +18,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SOURCES } from '../app/lib/sources.js';
+import { SOURCES } from './sources.js';
 import { fetchAll } from './rss.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT = join(here, '..', 'app', 'data', 'digest.json');
+const OUT = join(here, 'data', 'digest.json');
 
 /**
  * Rückblick beim Einsammeln. Großzügiger als das, was die App am Ende zeigt:
