@@ -112,12 +112,34 @@ sortieren.**
 | `sources.js` | **199 Quellen, 9 Rubriken. Hier wächst die App.** |
 | `localFilter.js` | Bewerten, mischen, kürzen |
 | `events.js` | Terminkalender, 55 Termine |
+| `i18n.js` | Oberflächentexte in sechs Sprachen |
 | `fetch.mjs` | Der Einsammler |
 | `rss.mjs` | Abruf und XML-Auswertung |
 
 `sources.js`, `localFilter.js` und `events.js` wurden per
 `node:module.stripTypeScriptTypes` aus dem alten TypeScript erzeugt --
 inhaltlich Zeile für Zeile dasselbe.
+
+### Sprachen
+
+Sechs Sprachen für die **Bedienung**: de, en, nl, fr, it, hy (Armenisch, auf
+Atzes Wunsch vom 12.09.2026). Ohne eigene Auswahl folgt Radar der Sprache des
+Geräts (`navigator.languages`), sonst Deutsch.
+
+- **Nur die Oberfläche.** Meldungen bleiben in der Sprache ihrer Quelle,
+  Terminnamen ebenfalls (größtenteils Eigennamen). Übersetzen bräuchte eine
+  KI pro Abruf -- ein eigenes Vorhaben, mit Atze nicht besprochen.
+- **Monate, Wochentage, Datumsformate kommen aus `Intl`**, nicht aus
+  `i18n.js`. Keine eigene Monatsliste anlegen, die man sechsfach pflegen muss.
+- **Deutsch ist die Rückfallebene und muss vollständig bleiben.** Fehlt ein
+  Eintrag in einer anderen Sprache, greift automatisch das deutsche Wort --
+  die App bleibt dadurch immer bedienbar.
+- `groupByMonth` gruppiert über einen sprachunabhängigen Schlüssel
+  (`YYYY-MM`) und liefert die Beschriftung daneben mit. Nicht wieder über den
+  angezeigten Text gruppieren, das bricht beim Sprachwechsel.
+- **Die armenische Fassung ist die unsicherste.** Sie wurde nicht von einem
+  Muttersprachler geprüft. Meldet Atze dort etwas Schiefes, ohne Diskussion
+  korrigieren.
 
 ### Regeln, die nicht gebrochen werden dürfen
 

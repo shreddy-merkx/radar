@@ -21,7 +21,7 @@
  * dann beim nächsten Start weggeräumt -- sonst sieht man nach einer
  * Aktualisierung wochenlang die alte Fassung.
  */
-const CACHE = 'radar-v3.0.0';
+const CACHE = 'radar-v3.1.0';
 
 const SHELL = [
   './',
@@ -31,6 +31,7 @@ const SHELL = [
   'localFilter.js',
   'sources.js',
   'events.js',
+  'i18n.js',
   'manifest.webmanifest',
   'icon-192.png',
   'icon-512.png',

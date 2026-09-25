@@ -1,3 +1,5 @@
+import { locale, t } from './i18n.js';
+
                                        
 
 /**
@@ -818,55 +820,60 @@ export function soon(now = new Date(), days = 10)              {
   return upcoming(now).filter((e) => daysUntil(e.start, now) <= days);
 }
 
-/** Für die Anzeige gruppiert: „August 2026", „September 2026", ... */
-const MONTHS = [
-  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-];
-
-export function monthLabel(day        )         {
-  const d = parseDay(day);
-  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+/**
+ * Monatsnamen, Wochentage und Datumsformate kommen aus `Intl` und richten
+ * sich damit automatisch nach der eingestellten Sprache -- es gibt hier
+ * bewusst keine eigene Monatsliste, die man in sechs Sprachen pflegen müsste.
+ */
+function monthName(date) {
+  return new Intl.DateTimeFormat(locale(), { month: 'long' }).format(date);
 }
 
-export function groupByMonth(events             )                                                {
-  const out                                                = [];
+/** Stabiler Schlüssel zum Gruppieren: unabhängig von der Sprache. */
+function monthKey(day) {
+  return day.slice(0, 7);
+}
+
+export function monthLabel(day) {
+  const d = parseDay(day);
+  return `${monthName(d)} ${d.getFullYear()}`;
+}
+
+export function groupByMonth(events) {
+  const out = [];
   for (const event of events) {
-    const label = monthLabel(event.start);
+    const key = monthKey(event.start);
     const last = out[out.length - 1];
-    if (last && last.label === label) last.events.push(event);
-    else out.push({ label, events: [event] });
+    if (last && last.key === key) last.events.push(event);
+    else out.push({ key, label: monthLabel(event.start), events: [event] });
   }
   return out;
 }
 
 /** Datumsangabe, wie ein Mensch sie schreibt: „21.–23. August". */
-export function formatRange(event           )         {
+export function formatRange(event) {
   const a = parseDay(event.start);
   const b = parseDay(event.end);
   const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
-  const mA = MONTHS[a.getMonth()];
-  const mB = MONTHS[b.getMonth()];
   const yearB = b.getFullYear() !== new Date().getFullYear() ? ` ${b.getFullYear()}` : '';
-  if (event.start === event.end) return `${a.getDate()}. ${mA}${yearB}`;
-  if (sameMonth) return `${a.getDate()}.–${b.getDate()}. ${mA}${yearB}`;
-  return `${a.getDate()}. ${mA} – ${b.getDate()}. ${mB}${yearB}`;
+  if (event.start === event.end) return `${a.getDate()}. ${monthName(a)}${yearB}`;
+  if (sameMonth) return `${a.getDate()}.–${b.getDate()}. ${monthName(a)}${yearB}`;
+  return `${a.getDate()}. ${monthName(a)} – ${b.getDate()}. ${monthName(b)}${yearB}`;
 }
 
-/** „heute", „morgen", „in 5 Tagen", „läuft: Tag 3 von 23". */
-export function countdownLabel(event           , now = new Date())         {
+/** „heute", „morgen", „in 5 Tagen", „läuft — Tag 3 von 23". */
+export function countdownLabel(event, now = new Date()) {
   const state = stateOf(event, now);
   if (state === 'running') {
     const d = dayOfEvent(event, now);
-    return d ? `läuft — Tag ${d.day} von ${d.total}` : 'heute';
+    return d ? t('running', { day: d.day, total: d.total }) : t('today');
   }
   const days = daysUntil(event.start, now);
-  if (days === 1) return 'morgen';
-  if (days <= 7) return `in ${days} Tagen`;
-  if (days <= 13) return 'nächste Woche';
-  const weeks = Math.round(days / 7);
-  if (days <= 60) return `in ${weeks} Wochen`;
-  return `in ${Math.round(days / 30.5)} Monaten`;
+  if (days === 1) return t('tomorrow');
+  if (days <= 7) return t('inDays', { n: days });
+  if (days <= 13) return t('nextWeek');
+  if (days <= 60) return t('inWeeks', { n: Math.round(days / 7) });
+  return t('inMonths', { n: Math.round(days / 30.5) });
 }
 
 /**

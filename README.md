@@ -30,6 +30,24 @@ Rubriken, Frischefaktor, Rubrikmischung, Riemen-Reiter, Terminkalender.
 
 ---
 
+## Sprachen
+
+Die Bedienung gibt es in **Deutsch, English, Nederlands, Français, Italiano
+und Հայերեն (Armenisch)**. Beim ersten Öffnen nimmt Radar die Sprache des
+Geräts, sofern sie dabei ist — sonst Deutsch. Umstellen in den Einstellungen
+unter **Sprache**, ganz oben.
+
+Mit umgestellt werden auch Monatsnamen, Wochentage und Angaben wie „in drei
+Tagen".
+
+**Nicht übersetzt werden die Meldungen selbst.** Die kommen so, wie die Quelle
+sie geschrieben hat — meist deutsch oder englisch. Sie zu übersetzen bräuchte
+eine KI bei jedem Abruf; das wäre ein eigenes Vorhaben. Auch die Termine
+behalten ihre Namen: „Downhill-Weltcup Whistler" ist zum größten Teil ein
+Eigenname.
+
+---
+
 ## Einrichten — einmalig, etwa 10 Minuten
 
 ### 1. Neues Projekt bei GitHub anlegen
@@ -145,6 +163,7 @@ passieren.
 | `index.html`, `styles.css`, `app.js` | Die App |
 | `sw.js`, `manifest.webmanifest`, `icon-*.png` | Das, was sie zur App auf dem Startbildschirm macht |
 | `sources.js`, `localFilter.js`, `events.js` | Quellen, Filterlogik, Termine — aus der bisherigen App übernommen |
+| `i18n.js` | Alle Texte der Bedienung in sechs Sprachen |
 | `fetch.mjs`, `rss.mjs` | Holen die Feeds, schreiben `data/digest.json` |
 | `.github/workflows/build.yml` | Der Zeitplan: alle 30 Minuten, plus bei jeder Änderung |
 

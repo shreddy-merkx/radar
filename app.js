@@ -13,6 +13,7 @@ import {
   COMPILED_ON, countdownLabel, formatRange, groupByMonth,
   parseDay, soon, stateOf, upcoming,
 } from './events.js';
+import { LANGUAGES, detectLanguage, locale, setLanguage, t, topicNames } from './i18n.js';
 
 const KEY = 'radar.settings.v3';
 const DIGEST_URL = 'data/digest.json';
@@ -22,9 +23,23 @@ const DEFAULTS = {
   maxItems: 30,
   maxAgeDays: 3,
   filter: 'all',
+  // null heißt: der Sprache des Geräts folgen. Erst eine bewusste Auswahl in
+  // den Einstellungen schreibt hier ein Kürzel hinein.
+  lang: null,
 };
 
 let settings = load();
+
+/**
+ * Sprache festlegen, bevor irgendetwas gezeichnet wird. Ohne eigene Auswahl
+ * gilt die Sprache des Geräts -- das ist mit „Systemsprache" gemeint.
+ */
+function applyLanguage() {
+  const code = setLanguage(settings.lang ?? detectLanguage());
+  document.documentElement.setAttribute('lang', code);
+  return code;
+}
+applyLanguage();
 let digest = null;
 let busy = false;
 let now = new Date();
@@ -78,14 +93,20 @@ function safeUrl(url) {
 function relativeTime(ms) {
   if (!ms) return '';
   const minutes = Math.round((Date.now() - ms) / 60000);
-  if (minutes < 1) return 'gerade eben';
-  if (minutes < 60) return `vor ${minutes} Min.`;
+  if (minutes < 1) return t('justNow');
+  if (minutes < 60) return t('minutesAgo', { n: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `vor ${hours} Std.`;
+  if (hours < 24) return t('hoursAgo', { n: hours });
   const days = Math.round(hours / 24);
-  if (days === 1) return 'gestern';
-  if (days < 7) return `vor ${days} Tagen`;
-  return new Date(ms).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
+  if (days === 1) return t('yesterday');
+  if (days < 7) return t('daysAgo', { n: days });
+  return new Date(ms).toLocaleDateString(locale(), { day: '2-digit', month: 'short' });
+}
+
+/** Rubrik mit übersetztem Namen -- Farbe und Kennung bleiben aus sources.js. */
+function topic_(id) {
+  const [label, short] = topicNames(id);
+  return { ...TOPIC_BY_ID[id], label, short };
 }
 
 const isOn = (id) => !settings.off.includes(id);
@@ -167,14 +188,19 @@ function render() {
 }
 
 function renderSubline({ items }) {
-  if (!digest) { $('subline').textContent = 'wird geladen …'; return; }
-  $('subline').textContent =
-    `${items.length} Meldungen · ${digest.sourcesOk}/${digest.sourcesTotal} Quellen · ${relativeTime(digest.generatedAt)}`;
+  if (!digest) { $('subline').textContent = t('loading'); return; }
+  $('subline').textContent = t('subline', {
+    items: items.length,
+    ok: digest.sourcesOk,
+    total: digest.sourcesTotal,
+    when: relativeTime(digest.generatedAt),
+  });
 }
 
 function renderChips({ counts }) {
-  const parts = [`<button class="chip" data-topic="all" aria-pressed="${settings.filter === 'all'}">Alle</button>`];
-  for (const topic of TOPICS) {
+  const parts = [`<button class="chip" data-topic="all" aria-pressed="${settings.filter === 'all'}">${esc(t('all'))}</button>`];
+  for (const base of TOPICS) {
+    const topic = topic_(base.id);
     const n = counts[topic.id] ?? 0;
     // Leere Rubriken verschwinden -- außer Riemen, das ist Absicht.
     if (!n && topic.id !== 'belt') continue;
@@ -199,11 +225,11 @@ function renderContent({ items }) {
   if (ageHours > 6) {
     const days = Math.round(ageHours / 24);
     const alter = days >= 1
-      ? `${days} ${days === 1 ? 'Tag' : 'Tagen'}`
-      : `${Math.round(ageHours)} Stunden`;
+      ? (days === 1 ? t('ageDay') : t('ageDays', { n: days }))
+      : t('ageHours', { n: Math.round(ageHours) });
     out.push(
-      `<div class="banner"><b>Stand von vor ${alter}</b>` +
-      `<span>Normalerweise wird alle 30 Minuten nachgeladen. Wenn das länger so bleibt, steht die Aktualisierung bei GitHub still — einmal „Run workflow" drücken weckt sie.</span></div>`,
+      `<div class="banner"><b>${esc(t('staleTitle', { age: alter }))}</b>` +
+      `<span>${esc(t('staleBody'))}</span></div>`,
     );
   }
 
@@ -212,11 +238,9 @@ function renderContent({ items }) {
   if (visible.length === 0) {
     const belt = settings.filter === 'belt';
     out.push(
-      `<div class="blank"><b>${belt ? 'Gerade nichts zum Riemenantrieb' : 'Hier ist gerade nichts'}</b>` +
-      `<p>${belt
-        ? `Radar durchsucht alle ${SOURCES.length} Quellen nach Riemenantrieb, Nabenschaltung und Getriebe und schaut dabei drei Wochen zurück. Im Moment gibt es nichts — das ist normal.`
-        : 'In dieser Rubrik ist bei der letzten Aktualisierung nichts angekommen.'}</p>` +
-      `<button class="cta" data-topic="all">Alles anzeigen</button></div>`,
+      `<div class="blank"><b>${esc(belt ? t('emptyBeltTitle') : t('emptyTitle'))}</b>` +
+      `<p>${esc(belt ? t('emptyBeltBody', { sources: SOURCES.length }) : t('emptyBody'))}</p>` +
+      `<button class="cta" data-topic="all">${esc(t('showAll'))}</button></div>`,
     );
     box.innerHTML = out.join('');
     return;
@@ -235,7 +259,7 @@ function renderContent({ items }) {
     byTopic.get(item.topic).push(item);
   }
   for (const [topicId, list] of byTopic) {
-    const topic = TOPIC_BY_ID[topicId];
+    const topic = topic_(topicId);
     out.push(
       `<section class="group"><div class="group-head">` +
       `<span class="group-dot" style="background:${topic.accent}"></span>` +
@@ -253,7 +277,7 @@ function isFresh(item) {
 
 function metaLine(item) {
   const bits = [`<span class="src">${esc(item.sourceName)}</span>`];
-  if (isFresh(item)) bits.push('<span class="tag new">NEU</span>');
+  if (isFresh(item)) bits.push(`<span class="tag new">${esc(t('badgeNew'))}</span>`);
   if (item.publishedAt) bits.push(`<span>${esc(relativeTime(item.publishedAt))}</span>`);
   if (item.lang === 'en') bits.push('<span class="tag">EN</span>');
   return `<div class="meta">${bits.join('')}</div>`;
@@ -287,7 +311,7 @@ function renderStrip() {
   const events = soon(now, 10);
   if (events.length === 0) return '';
   const cards = events.map((event) => {
-    const accent = TOPIC_BY_ID[event.topic].accent;
+    const accent = TOPIC_BY_ID[event.topic].accent;  // Farbe ist sprachunabhängig
     const running = stateOf(event, now) === 'running';
     return `<button class="ev${running ? ' now' : ''}" data-event="${esc(event.id)}"` +
       `${running ? ` style="border-color:${accent}"` : ''}>` +
@@ -296,15 +320,15 @@ function renderStrip() {
       `<h3>${esc(event.name)}</h3>` +
       `<p>${esc(formatRange(event))}<br>${esc(event.location)}</p></button>`;
   }).join('');
-  return `<div class="strip"><div class="strip-head"><h2>DEMNÄCHST</h2>` +
-    `<button data-open="cal">ganzer Kalender ›</button></div>` +
+  return `<div class="strip"><div class="strip-head"><h2>${esc(t('soonHead'))}</h2>` +
+    `<button data-open="cal">${esc(t('fullCalendar'))}</button></div>` +
     `<div class="rail">${cards}</div></div>`;
 }
 
 function renderColophon() {
-  const parts = [`${SOURCES.length} Quellen · ${TOPICS.length} Rubriken · sortiert auf dem Gerät`];
+  const parts = [t('colophon', { sources: SOURCES.length, topics: TOPICS.length })];
   if (digest?.sourcesFailed?.length) {
-    parts.push(`${digest.sourcesFailed.length} Quellen waren beim letzten Einsammeln stumm — bei ${digest.sourcesTotal} ist das normal.`);
+    parts.push(t('colophonFailed', { n: digest.sourcesFailed.length, total: digest.sourcesTotal }));
   }
   $('colophon').innerHTML = parts.map(esc).join('<br>');
 }
@@ -317,10 +341,9 @@ function skeleton() {
 
 function renderError(error) {
   $('content').innerHTML =
-    `<div class="blank"><b>Keine Verbindung</b>` +
-    `<p>Radar konnte die Nachrichten nicht laden und hat auch keinen gespeicherten Stand. ` +
-    `(${esc(error.message)})</p>` +
-    `<button class="cta" data-retry="1">Nochmal versuchen</button></div>`;
+    `<div class="blank"><b>${esc(t('offlineTitle'))}</b>` +
+    `<p>${esc(t('offlineBody'))} (${esc(error.message)})</p>` +
+    `<button class="cta" data-retry="1">${esc(t('retry'))}</button></div>`;
 }
 
 /* --------------------------------------------------------------- Zettel */
@@ -336,18 +359,25 @@ function openSheet(which, keepScroll = false) {
   $('sheet').hidden = false;
   if (which === 'cal') {
     const list = upcoming(now);
-    $('sheet-title').textContent = 'Termine';
-    $('sheet-sub').textContent = `${list.length} ${list.length === 1 ? 'Termin' : 'Termine'} vor dir`;
+    $('sheet-title').textContent = t('eventsTitle');
+    $('sheet-sub').textContent = list.length === 1
+      ? t('eventsCountOne')
+      : t('eventsCount', { n: list.length });
     body.innerHTML = calendarHtml(list);
   } else {
-    $('sheet-title').textContent = 'Einstellungen';
-    $('sheet-sub').textContent = `${SOURCES.filter((s) => isOn(s.id)).length} von ${SOURCES.length} Quellen an`;
+    $('sheet-title').textContent = t('settingsTitle');
+    $('sheet-sub').textContent = t('settingsSub', {
+      on: SOURCES.filter((s) => isOn(s.id)).length, total: SOURCES.length,
+    });
     body.innerHTML = settingsHtml();
   }
   body.scrollTop = y;
 }
 
-const KIND_LABEL = { race: 'RENNEN', championship: 'MEISTERSCHAFT', festival: 'FESTIVAL', show: 'MESSE' };
+const KIND_KEY = {
+  race: 'kindRace', championship: 'kindChampionship',
+  festival: 'kindFestival', show: 'kindShow',
+};
 
 function calendarHtml(list) {
   const out = [];
@@ -361,46 +391,58 @@ function calendarHtml(list) {
         `<button class="ev-row" data-event="${esc(event.id)}">` +
         `<span class="date${running ? ' now' : ''}"${running ? ` style="background:${accent}"` : ''}>` +
         `<span class="d">${day.getDate()}</span>` +
-        `<span class="w">${esc(day.toLocaleDateString('de-DE', { weekday: 'short' }))}</span></span>` +
-        `<span class="label"><span class="kind" style="color:${accent}">${KIND_LABEL[event.kind]}</span> ` +
+        `<span class="w">${esc(day.toLocaleDateString(locale(), { weekday: 'short' }))}</span></span>` +
+        `<span class="label"><span class="kind" style="color:${accent}">${esc(t(KIND_KEY[event.kind]))}</span> ` +
         `<span style="font-size:11.5px;font-weight:600;color:${running ? accent : 'var(--muted)'}">${esc(countdownLabel(event, now))}</span>` +
         `<h3>${esc(event.name)}</h3>` +
         `<p>${esc(formatRange(event))} · ${esc(event.location)}</p>` +
         (event.disciplines?.length ? `<p class="note">${esc(event.disciplines.join(' · '))}</p>` : '') +
         (event.note ? `<p class="note">${esc(event.note)}</p>` : '') +
-        (!event.confirmed ? '<p class="unsure">Termin noch nicht endgültig bestätigt — vor der Anreise prüfen</p>' : '') +
+        (!event.confirmed ? `<p class="unsure">${esc(t('unconfirmed'))}</p>` : '') +
         `</span></button>`,
       );
     }
     out.push('</div>');
   }
-  out.push(
-    `<p class="hint" style="margin-top:20px">Termine einzeln an den offiziellen Seiten nachgeschlagen, Stand ` +
-    `${esc(parseDay(COMPILED_ON).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }))}. ` +
-    `Tippen öffnet die Veranstalterseite.</p>`,
-  );
+  const stand = parseDay(COMPILED_ON)
+    .toLocaleDateString(locale(), { day: '2-digit', month: 'long', year: 'numeric' });
+  out.push(`<p class="hint" style="margin-top:20px">${esc(t('calendarFooter', { date: stand }))}</p>`);
   return out.join('');
 }
 
 function settingsHtml() {
   const out = [];
 
-  out.push('<div class="sec">UMFANG</div>');
-  out.push('<p class="hint">Wie viele Meldungen die Frontpage zeigt und wie weit Radar zurückschaut.</p>');
+  out.push(`<div class="sec">${esc(t('secLanguage'))}</div>`);
+  out.push(`<p class="hint">${esc(t('languageHint'))}</p>`);
   out.push('<div class="steps">');
-  for (const n of [10, 20, 30, 45, 60]) {
-    out.push(`<button class="step" data-max="${n}" aria-pressed="${settings.maxItems === n}">${n} Meldungen</button>`);
-  }
-  out.push('</div><div class="steps" style="margin-top:9px">');
-  for (const d of [1, 2, 3, 7, 14]) {
-    out.push(`<button class="step" data-age="${d}" aria-pressed="${settings.maxAgeDays === d}">${d} ${d === 1 ? 'Tag' : 'Tage'}</button>`);
+  for (const { code, label } of LANGUAGES) {
+    // Jeder Name steht in seiner eigenen Sprache -- wer die App gerade nicht
+    // lesen kann, erkennt „English" oder „Հայերեն" trotzdem wieder.
+    out.push(`<button class="step" data-lang="${code}" lang="${code}" ` +
+      `aria-pressed="${locale() === code}">${esc(label)}</button>`);
   }
   out.push('</div>');
 
-  out.push(`<div class="sec">QUELLEN · ${SOURCES.filter((s) => isOn(s.id)).length} VON ${SOURCES.length} AN</div>`);
-  out.push('<p class="hint">Abschalten blendet eine Quelle sofort aus. Eingesammelt wird trotzdem weiter — das passiert nicht auf deinem Handy, kostet dich also keine Zeit.</p>');
+  out.push(`<div class="sec">${esc(t('secScope'))}</div>`);
+  out.push(`<p class="hint">${esc(t('scopeHint'))}</p>`);
+  out.push('<div class="steps">');
+  for (const n of [10, 20, 30, 45, 60]) {
+    out.push(`<button class="step" data-max="${n}" aria-pressed="${settings.maxItems === n}">${esc(t('nItems', { n }))}</button>`);
+  }
+  out.push('</div><div class="steps" style="margin-top:9px">');
+  for (const d of [1, 2, 3, 7, 14]) {
+    out.push(`<button class="step" data-age="${d}" aria-pressed="${settings.maxAgeDays === d}">${esc(d === 1 ? t('nDay') : t('nDays', { n: d }))}</button>`);
+  }
+  out.push('</div>');
 
-  for (const topic of TOPICS) {
+  out.push(`<div class="sec">${esc(t('secSources', {
+    on: SOURCES.filter((s) => isOn(s.id)).length, total: SOURCES.length,
+  }))}</div>`);
+  out.push(`<p class="hint">${esc(t('sourcesHint'))}</p>`);
+
+  for (const base of TOPICS) {
+    const topic = topic_(base.id);
     const list = SOURCES.filter((s) => s.topic === topic.id);
     if (!list.length) continue;
     const on = list.filter((s) => isOn(s.id)).length;
@@ -408,14 +450,14 @@ function settingsHtml() {
       `<div class="topic-head"><span class="group-dot" style="background:${topic.accent}"></span>` +
       `<b style="color:${topic.accent}">${esc(topic.label)}</b>` +
       `<span style="font-size:12.5px;color:var(--faint)">${on}/${list.length}</span>` +
-      `<button data-bulk="${topic.id}">${on === list.length ? 'alle aus' : 'alle an'}</button></div>`,
+      `<button data-bulk="${topic.id}">${esc(on === list.length ? t('allOff') : t('allOn'))}</button></div>`,
     );
     out.push('<div class="block">');
     for (const source of list) {
       out.push(
         `<button class="row" data-src="${esc(source.id)}">` +
         `<span class="label"><b>${esc(source.name)}` +
-        (source.kind !== 'article' ? ` <span class="tag">${source.kind === 'video' ? 'VIDEO' : 'FORUM'}</span>` : '') +
+        (source.kind !== 'article' ? ` <span class="tag">${esc(source.kind === 'video' ? t('tagVideo') : t('tagForum'))}</span>` : '') +
         (source.lang === 'en' ? ' <span class="tag">EN</span>' : '') +
         `</b>${source.note ? `<span>${esc(source.note)}</span>` : ''}</span>` +
         `<span class="sw" aria-checked="${isOn(source.id)}" role="switch"></span></button>`,
@@ -429,7 +471,7 @@ function settingsHtml() {
 /* ------------------------------------------------------------ Bedienung */
 
 document.addEventListener('click', (event) => {
-  const target = event.target.closest('[data-topic],[data-open],[data-event],[data-src],[data-bulk],[data-max],[data-age],[data-retry]');
+  const target = event.target.closest('[data-topic],[data-open],[data-event],[data-src],[data-bulk],[data-max],[data-age],[data-retry],[data-lang]');
   if (!target) return;
 
   if (target.dataset.topic) {
@@ -458,8 +500,15 @@ document.addEventListener('click', (event) => {
   } else if (target.dataset.age) {
     settings.maxAgeDays = Number(target.dataset.age);
     save(); openSheet('set', true); render();
+  } else if (target.dataset.lang) {
+    settings.lang = target.dataset.lang;
+    save();
+    applyLanguage();
+    openSheet('set', true);
+    render();
   } else if (target.dataset.retry) {
-    refresh();
+    $('pull-label').textContent = t('pullToRefresh');
+refresh();
   }
 });
 
@@ -484,15 +533,15 @@ scroller.addEventListener('touchmove', (event) => {
   if (!pulling) return;
   const distance = event.touches[0].clientY - startY;
   $('pull').classList.toggle('armed', distance > 70);
-  if (distance > 70) $('pull-label').textContent = 'Loslassen zum Aktualisieren';
+  if (distance > 70) $('pull-label').textContent = t('releaseToRefresh');
 }, { passive: true });
 
 scroller.addEventListener('touchend', () => {
   if (pulling && $('pull').classList.contains('armed')) {
-    $('pull-label').textContent = 'wird geladen …';
+    $('pull-label').textContent = t('loading');
     refresh().then(() => {
       $('pull').classList.remove('armed');
-      $('pull-label').textContent = 'Zum Aktualisieren ziehen';
+      $('pull-label').textContent = t('pullToRefresh');
     });
   } else {
     $('pull').classList.remove('armed');
@@ -541,5 +590,12 @@ try {
   const cached = localStorage.getItem('radar.digest.v3');
   if (cached) { digest = JSON.parse(cached); render(); }
 } catch {}
+
+// Beschriftungen, die im Gerüst auf Deutsch stehen, sofort auf die gewählte
+// Sprache setzen -- sonst blitzt beim Start kurz Deutsch auf.
+$('pull-label').textContent = t('pullToRefresh');
+$('btn-cal').setAttribute('aria-label', t('eventsTitle'));
+$('btn-set').setAttribute('aria-label', t('settingsTitle'));
+if (!digest) $('subline').textContent = t('loading');
 
 refresh();
