@@ -1,0 +1,57 @@
+RADAR — grosser Umbau
+=====================
+
+In diesem Ordner liegen nur die Dateien, die sich geaendert haben.
+Alles andere im Projekt bleibt, wie es ist.
+
+
+SCHRITT 1 — Dateien hochladen
+-----------------------------
+Bei GitHub im Projekt:  Add file -> Upload files
+Alle Dateien aus diesem Ordner AUSSER build-yml-ZUM-KOPIEREN.txt
+in das Feld ziehen.  Unten "Commit changes".
+Sie ueberschreiben die alten Fassungen. Das ist richtig so.
+
+
+SCHRITT 2 — nur falls du die Top-10-Aenderung noch nicht gemacht hast
+----------------------------------------------------------------------
+Im Projekt auf:   .github  ->  workflows  ->  build.yml
+Rechts oben auf den Stift (Edit), alles markieren (Strg+A), loeschen.
+Dann "build-yml-ZUM-KOPIEREN.txt" hier im Ordner doppelklicken,
+dort alles markieren, kopieren, bei GitHub einfuegen. "Commit changes".
+
+Steht in deiner build.yml schon die Zeile mit YOUTUBE_API_KEY,
+kannst du diesen Schritt ueberspringen.
+
+
+SCHRITT 3 — einmal laufen lassen
+--------------------------------
+Actions -> Radar bauen und veroeffentlichen -> Run workflow.
+Ein bis zwei Minuten warten, bis der Haken gruen ist.
+
+Auf dem iPhone die App einmal GANZ schliessen (hochwischen und wegwerfen)
+und neu oeffnen. Sonst laeuft noch die alte Fassung aus dem Speicher.
+
+
+WAS SICH AENDERT
+----------------
+* Ein Reiter zeigt jetzt die ganze Rubrik, nicht nur die Meldungen
+  der Frontpage. Unten gibt es "Mehr laden".
+* Dieselbe Meldung steht nur noch einmal da ("auch bei ...").
+* Lupe oben rechts: Suche ueber alles, was geladen ist.
+* Lesezeichen an jeder Karte, eigener Reiter "Gemerkt".
+* Radar merkt sich, was du gelesen hast, und sagt oben,
+  wie viel seit dem letzten Besuch dazugekommen ist.
+* Rund doppelt so viele Meldungen pro Bildschirm.
+  Noch enger: Einstellungen -> Darstellung -> Kompakt.
+* Termine koennen in deinen Handy-Kalender.
+* Quellenliste klappt zusammen und laesst sich durchsuchen.
+* Repariert: Reiter verschwanden hinter der Kopfzeile, das "EN" in der
+  Quellenliste war ein leerer Kasten, Zahlen stimmten nicht ueberein,
+  Zahnrad statt Sonnensymbol.
+
+Deine bisherigen Einstellungen (abgeschaltete Quellen, Sprache, Umfang)
+werden uebernommen. Du musst nichts neu einstellen.
+
+Ausfuehrlich steht alles in README.md unter
+"Was Radar jetzt anders macht".

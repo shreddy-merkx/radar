@@ -20,6 +20,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SOURCES } from './sources.js';
 import { fetchAll } from './rss.mjs';
+import { bundleDuplicates } from './localFilter.js';
+import { videoIdOf, videoIntel } from './youtube.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = join(here, 'data', 'digest.json');
@@ -44,7 +46,16 @@ function log(...args) {
 const started = Date.now();
 log(`Radar: ${SOURCES.length} Quellen werden abgerufen …`);
 
-const { items, problems, sourcesOk, okIds } = await fetchAll(SOURCES, COLLECT_DAYS);
+const { items: fetched, problems, sourcesOk, okIds } = await fetchAll(SOURCES, COLLECT_DAYS);
+
+/*
+ * Dieselbe Meldung bei fünf Quellen wird zu einer Meldung mit vier
+ * Zweitquellen. Das passiert hier und nicht auf dem Handy: Der Vergleich geht
+ * über alle Meldungen gegen alle und ist das Teuerste, was Radar rechnet --
+ * einmal beim Bauen statt bei jedem Öffnen.
+ */
+const items = bundleDuplicates(fetched);
+const gebuendelt = fetched.length - items.length;
 
 const trimmed = items.slice(0, MAX_ITEMS).map((item) => ({
   ...item,
@@ -56,21 +67,65 @@ const trimmed = items.slice(0, MAX_ITEMS).map((item) => ({
 const byTopic = {};
 for (const item of trimmed) byTopic[item.topic] = (byTopic[item.topic] ?? 0) + 1;
 
+/*
+ * Die Top 10 der Videoszene. Freiwillig: Ohne Schlüssel im Projekt kommt null
+ * zurück, die App lässt den Abschnitt dann weg.
+ *
+ * Wichtig ist das `catch`. Ein Ausfall bei Google -- Budget alle, Schlüssel
+ * abgelaufen, Google hat Schnupfen -- darf auf keinen Fall den ganzen Lauf
+ * mitreißen. Die 199 Quellen sind die Hauptsache; die Top 10 sind die Zugabe.
+ */
+let videos = null;
+let statsCount = 0;
+if (process.env.YOUTUBE_API_KEY) {
+  try {
+    const { stats, top } = await videoIntel(items, SOURCES, process.env.YOUTUBE_API_KEY);
+    videos = top;
+    if (stats) {
+      /*
+       * Länge und Aufrufe an die einzelnen Videokacheln hängen. Ohne das sieht
+       * ein Video in der Liste aus wie ein Textbeitrag -- derselbe Kasten,
+       * dieselbe Zeile darunter, kein Hinweis darauf, dass man zehn Minuten
+       * Zeit mitbringen sollte.
+       */
+      for (const item of trimmed) {
+        if (item.kind !== 'video') continue;
+        const found = stats[videoIdOf(item.link) ?? ''];
+        if (!found) continue;
+        item.seconds = found.seconds;
+        item.views = found.views;
+        statsCount += 1;
+      }
+    }
+  } catch (error) {
+    console.warn(`Top 10 ausgelassen: ${error.message}`);
+  }
+}
+
 const digest = {
   /**
    * Formatfassung. Die App weigert sich, eine Datei zu lesen, deren Aufbau sie
    * nicht kennt -- lieber der alte, zwischengespeicherte Stand als eine leere
    * oder falsch dargestellte Seite.
    */
-  version: 1,
+  /*
+   * Auf 2 erhöht, als Mehrfachmeldungen (`also`) und Videozahlen dazukamen.
+   * Die App liest beide Fassungen -- eine App, die noch im Zwischenspeicher
+   * liegt, soll an einer neuen Datei nicht ersticken.
+   */
+  version: 2,
   generatedAt: Date.now(),
   sourcesTotal: SOURCES.length,
   sourcesOk,
   /** Nur die Namen, nicht die vollen Fehlertexte -- die stehen im Protokoll. */
   sourcesFailed: SOURCES.filter((s) => !okIds.includes(s.id)).map((s) => s.name),
   itemsTotal: items.length,
+  /** Wie viele Meldungen beim Bündeln zusammengefasst wurden. */
+  bundled: gebuendelt,
   byTopic,
   items: trimmed,
+  /** Fehlt, wenn kein Schlüssel hinterlegt ist oder Google nicht antwortet. */
+  topVideos: videos,
 };
 
 mkdirSync(dirname(OUT), { recursive: true });
@@ -82,8 +137,13 @@ const kb = (JSON.stringify(digest).length / 1024).toFixed(0);
 log('');
 log(`Fertig in ${seconds}s.`);
 log(`  ${sourcesOk} von ${SOURCES.length} Quellen haben geantwortet`);
-log(`  ${items.length} Meldungen gefunden, ${trimmed.length} behalten (${kb} KB)`);
+log(`  ${fetched.length} Meldungen gefunden, ${gebuendelt} als Mehrfachmeldung gebündelt`);
+log(`  ${items.length} übrig, ${trimmed.length} behalten (${kb} KB)`);
 log(`  Rubriken: ${Object.entries(byTopic).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+log(videos
+  ? `  Top 10: ${videos.items.length} Videos aus ${videos.checked} geprüften, ` +
+    `${statsCount} Kacheln mit Länge und Aufrufen`
+  : `  Top 10: ausgelassen${process.env.YOUTUBE_API_KEY ? '' : ' (kein YOUTUBE_API_KEY hinterlegt)'}`);
 
 if (problems.length > 0) {
   log('');

@@ -261,6 +261,40 @@ export async function fetchSource(
 }
 
 /** Titel so normalisieren, dass fast gleiche Meldungen aufeinanderfallen. */
+/**
+ * Die Adresse, an der zwei Einträge als „derselbe Beitrag" erkannt werden.
+ *
+ * Hier stand einmal `link.split('?')[0]` -- alles ab dem Fragezeichen weg. Das
+ * war ein schwerer Fehler: Bei YouTube steht die Videonummer genau dort
+ * (`watch?v=...`). Alle 69 Kanäle wurden damit auf dieselbe Adresse verkürzt,
+ * und von sämtlichen Videos überlebte pro Lauf **ein einziges**. Die Rubrik
+ * „Szene & Videos" war deshalb immer fast leer, ohne dass es nach einem Fehler
+ * aussah.
+ *
+ * Jetzt fliegen nur die Parameter raus, die wirklich nichts zur Sache tun --
+ * Zählpixel und Kampagnen-Anhängsel, die dieselbe Seite zweimal aussehen
+ * lassen. Alles andere bleibt stehen.
+ */
+const TRACKING_PARAMS = /^(utm_|fbclid$|gclid$|mc_|ref$|ref_src$|source$|at_medium$|at_campaign$|__twitter|igshid$|si$|feature$)/i;
+
+function canonicalLink(link        )         {
+  try {
+    const url = new URL(link);
+    for (const name of [...url.searchParams.keys()]) {
+      if (TRACKING_PARAMS.test(name)) url.searchParams.delete(name);
+    }
+    url.hash = '';
+    // www. und abschließender Schrägstrich sind für die Frage, ob es derselbe
+    // Beitrag ist, ohne Bedeutung.
+    const host = url.host.replace(/^www\./, '');
+    const path = url.pathname.replace(/\/+$/, '');
+    const query = url.searchParams.toString();
+    return `${host}${path}${query ? `?${query}` : ''}`;
+  } catch {
+    return link.split('#')[0];
+  }
+}
+
 function fingerprint(title        )         {
   return title
     .toLowerCase()
@@ -337,7 +371,7 @@ export async function fetchAll(
     for (const item of result.items) {
       const limit = mentionsBelt(`${item.title} ${item.excerpt}`) ? beltCutoff : cutoff;
       if (item.publishedAt !== null && item.publishedAt < limit) continue;
-      const linkKey = item.link.split('?')[0];
+      const linkKey = canonicalLink(item.link);
       if (seenLinks.has(linkKey)) continue;
       const titleKey = fingerprint(item.title);
       if (titleKey.length > 10 && seenTitles.has(titleKey)) continue;

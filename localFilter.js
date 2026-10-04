@@ -348,12 +348,174 @@ export function toDigestItem(item         , now = Date.now())             {
     lang: item.lang,
     kind: item.kind,
     image: item.image,
+    sourceId: item.sourceId,
+    /* Weitere Quellen, die dieselbe Meldung haben -- siehe bundleDuplicates. */
+    also: Array.isArray(item.also) ? item.also : null,
+    /* Nur bei Videos, und nur wenn ein YouTube-Schlüssel hinterlegt ist. */
+    seconds: item.seconds ?? null,
+    views: item.views ?? null,
   };
+}
+
+/* ------------------------------------------------- Dieselbe Meldung, dreimal
+
+   199 Quellen schreiben über dasselbe Rennen. Die Entdopplung in rss.mjs
+   greift nur bei fast gleichlautenden Überschriften -- „Pogačar gewinnt
+   Etappe 14" und „Soloflucht: Pogačar schlägt zu" bleiben zwei Karten, und die
+   Frontpage erzählt dieselbe Geschichte dreimal.
+
+   Deshalb hier ein zweiter, gröberer Durchgang: Nicht die Zeichenfolge wird
+   verglichen, sondern die Wörter, die etwas bedeuten. Teilen sich zwei
+   Überschriften genug davon, ist es eine Meldung -- die erste (und damit
+   neueste) bleibt stehen, die anderen hängen sich als „auch bei …" an.
+
+   Bewusst streng eingestellt: Zwei Meldungen fälschlich zusammenzuwerfen
+   kostet eine Nachricht, die niemand mehr sieht. Zwei stehen zu lassen kostet
+   eine Zeile Platz. Der zweite Fehler ist der billigere. */
+
+/** Wörter ohne eigene Aussage -- deutsch, englisch und das übliche Radsport-Füllwerk. */
+const STOPWORDS = new Set([
+  'aber', 'alle', 'allen', 'aller', 'alles', 'auch', 'auf', 'aus', 'bein', 'beim',
+  'dabei', 'dann', 'dass', 'dein', 'dem', 'den', 'der', 'des', 'dich', 'die',
+  'dies', 'diese', 'diesem', 'diesen', 'dieser', 'doch', 'durch', 'eine', 'einem',
+  'einen', 'einer', 'eines', 'etwa', 'fuer', 'für', 'gegen', 'gibt', 'hier',
+  'ihre', 'ihrem', 'ihren', 'immer', 'jetzt', 'kann', 'kein', 'keine', 'mehr',
+  'mein', 'mit', 'nach', 'neue', 'neuen', 'neuer', 'neues', 'nicht', 'noch',
+  'nur', 'oder', 'ohne', 'schon', 'sehr', 'sein', 'seine', 'sich', 'sind',
+  'sondern', 'über', 'ueber', 'und', 'unter', 'viel', 'vom', 'von', 'vor',
+  'wann', 'was', 'weil', 'wenn', 'werden', 'wie', 'wieder', 'wird', 'wirklich',
+  'wird', 'zum', 'zur', 'zwei',
+  'about', 'after', 'again', 'all', 'also', 'and', 'are', 'but', 'can', 'does',
+  'for', 'from', 'has', 'have', 'here', 'his', 'how', 'into', 'its', 'just',
+  'more', 'most', 'new', 'not', 'now', 'one', 'only', 'our', 'out', 'over',
+  'that', 'the', 'their', 'them', 'then', 'there', 'these', 'they', 'this',
+  'two', 'was', 'what', 'when', 'where', 'which', 'who', 'why', 'will', 'with',
+  'you', 'your',
+  'bericht', 'video', 'news', 'test', 'erste', 'ersten', 'erster',
+]);
+
+/**
+ * Die bedeutungstragenden Wörter einer Überschrift. Namen, Marken, Zahlen --
+ * genau das, was zwei Berichte über dasselbe Ereignis gemeinsam haben.
+ */
+export function keyWords(title        )              {
+  const words = String(title ?? '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(' ')
+    /* Zahlen ab zwei Stellen zählen mit: Etappennummern, Modelljahre und
+       Stückzahlen sind oft das Einzige, was zwei Berichte eindeutig
+       verbindet („14. Etappe", „GRX 2027"). */
+    .filter((word) => (word.length >= 4 || (word.length >= 2 && /^\d+$/.test(word)))
+      && !STOPWORDS.has(word));
+  return new Set(words);
+}
+
+/**
+ * Wie stark sich zwei Wortmengen überschneiden, gemessen an der kleineren.
+ * Absichtlich nicht Jaccard: „Pogačar gewinnt Etappe 14" (4 Wörter) und
+ * „Tour de France: Tadej Pogačar gewinnt die 14. Etappe nach Soloflucht"
+ * (8 Wörter) gehören zusammen, obwohl Jaccard dabei nur auf 0,5 käme.
+ */
+function overlap(a             , b             )         {
+  const smaller = a.size <= b.size ? a : b;
+  const larger = smaller === a ? b : a;
+  let hits = 0;
+  for (const word of smaller) if (larger.has(word)) hits += 1;
+  return { share: hits / Math.max(1, smaller.size), hits };
+}
+
+/** Zwei Tage. Was eine Woche auseinanderliegt, ist nicht dieselbe Meldung. */
+const BUNDLE_WINDOW_MS = 48 * 3600 * 1000;
+/** Anteil gemeinsamer Wörter, ab dem es dieselbe Meldung ist. */
+const BUNDLE_SHARE = 0.6;
+/** Zusätzlich nötig: so viele gemeinsame Wörter. Verhindert Zufallstreffer. */
+const BUNDLE_MIN_HITS = 3;
+/** So viele Zweitquellen werden pro Meldung aufgehoben. */
+const BUNDLE_MAX_ALSO = 6;
+
+/**
+ * Fasst Meldungen über dasselbe Ereignis zusammen.
+ *
+ * Erwartet die Liste in der Reihenfolge, in der sie am Ende erscheinen soll
+ * (bei Radar: neueste zuerst). Die erste Meldung einer Gruppe bleibt stehen
+ * und bekommt ein Feld `also` mit den anderen -- vollständig genug, dass die
+ * App eine davon anzeigen kann, wenn die Hauptquelle abgeschaltet ist.
+ */
+export function bundleDuplicates(items          )             {
+  const kept             = [];
+  const keys                = [];
+
+  for (const item of items) {
+    /*
+     * Nur Artikel werden gebündelt.
+     *
+     * Bei Nachrichten ist „dasselbe Thema" dieselbe Meldung -- fünf Magazine
+     * berichten über ein Rennen. Bei Videos und Forenbeiträgen stimmt das
+     * nicht: „GCN: 5 Fehler beim Gravel" und „GMBN: 5 Fehler beim Gravel" sind
+     * zwei verschiedene Filme von zwei Leuten, auch wenn die Überschriften sich
+     * gleichen. Sie zusammenzuwerfen würde einen davon unsichtbar machen.
+     */
+    if (item.kind !== 'article') {
+      kept.push(item);
+      keys.push(null);
+      continue;
+    }
+
+    const words = keyWords(item.title);
+    let merged = false;
+
+    if (words.size >= BUNDLE_MIN_HITS) {
+      /* Rückwärts: Die zeitlich nächsten Kandidaten stehen am Ende. */
+      for (let i = kept.length - 1; i >= 0; i -= 1) {
+        const other = kept[i];
+        if (other.publishedAt !== null && item.publishedAt !== null
+          && Math.abs(other.publishedAt - item.publishedAt) > BUNDLE_WINDOW_MS) {
+          /* Alles davor liegt noch weiter weg -- Suche beenden. */
+          break;
+        }
+        if (keys[i] === null || other.sourceId === item.sourceId) continue;
+        const { share, hits } = overlap(words, keys[i]);
+        if (share < BUNDLE_SHARE || hits < BUNDLE_MIN_HITS) continue;
+
+        other.also = other.also ?? [];
+        if (other.also.length < BUNDLE_MAX_ALSO) {
+          other.also.push({
+            sourceId: item.sourceId,
+            sourceName: item.sourceName,
+            title: item.title,
+            link: item.link,
+            publishedAt: item.publishedAt,
+            lang: item.lang,
+          });
+        }
+        merged = true;
+        break;
+      }
+    }
+
+    if (!merged) {
+      kept.push(item);
+      keys.push(words);
+    }
+  }
+
+  return kept;
 }
 
 export function localDigest(items           , maxItems        )               {
   const now = Date.now();
-  const scored = items.map((item) => toDigestItem(item, now));
+  return mixDigest(items.map((item) => toDigestItem(item, now)), maxItems);
+}
+
+/**
+ * Dasselbe wie `localDigest`, nur für Meldungen, die schon aufbereitet sind.
+ *
+ * Die App braucht beides: Für die Rubrikansicht wandelt sie alle Meldungen
+ * einmal um und greift danach mehrfach darauf zu. Sie dafür jedes Mal neu
+ * umzuwandeln wäre dieselbe Arbeit zweimal.
+ */
+export function mixDigest(scored               , maxItems        )               {
 
   // Alles unter 25 ist mit hoher Wahrscheinlichkeit Werbung oder Füllmaterial.
   const worthKeeping = scored.filter((item) => item.score >= 25);

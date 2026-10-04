@@ -21,7 +21,7 @@
  * dann beim nächsten Start weggeräumt -- sonst sieht man nach einer
  * Aktualisierung wochenlang die alte Fassung.
  */
-const CACHE = 'radar-v3.1.0';
+const CACHE = 'radar-v4.0.0';
 
 const SHELL = [
   './',

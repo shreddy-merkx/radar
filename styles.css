@@ -64,13 +64,16 @@ body {
   color: var(--text);
   font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  /* Kein Textmarkieren beim Tippen und Wischen -- typisches App-Verhalten. */
+  /* Kein Textmarkieren beim Tippen und Wischen -- typisches App-Verhalten.
+     Eingabefelder nehmen es sich unten zurück, sonst kann man dort nichts
+     markieren oder einfügen. */
   -webkit-user-select: none;
   user-select: none;
   overscroll-behavior-y: none;
 }
 
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input { font: inherit; -webkit-user-select: text; user-select: text; }
 :focus-visible { outline: 2.5px solid var(--fresh-bg); outline-offset: 2px; border-radius: 6px; }
 
 /* ------------------------------------------------------------------ Kopf */
@@ -80,13 +83,20 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   z-index: 20;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 7px;
   /* Der obere Abstand nimmt die Aussparung des iPhones auf. */
   padding: calc(env(safe-area-inset-top) + 12px) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: saturate(180%) blur(18px);
-  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  /* Deckend, nicht durchscheinend. Vorher schimmerten Karten und Reiter
+     darunter durch und die Kopfzeile sah aus wie ein Druckfehler. */
+  background: var(--bg);
+  transition: padding .18s ease;
 }
+.topbar::after {
+  /* Eine Haarlinie, aber erst wenn etwas darunter wegscrollt. */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: var(--border); opacity: 0; transition: opacity .18s;
+}
+.topbar.small::after { opacity: 1; }
 
 .brand { flex: 1; min-width: 0; }
 
@@ -96,7 +106,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   font-weight: 800;
   letter-spacing: -.5px;
   line-height: 1.1;
+  transition: font-size .18s ease;
 }
+/* Beim Scrollen schiebt sich der Kopf zusammen: Der Name muss beim Lesen
+   nicht so groß sein wie beim Ankommen. Das bringt rund 14 Pixel pro
+   Bildschirm zurück -- eine halbe Zeile mehr Nachricht. */
+.topbar.small { padding-top: calc(env(safe-area-inset-top) + 7px); padding-bottom: 7px; }
+.topbar.small h1 { font-size: 19px; }
 
 .subline {
   margin: 2px 0 0;
@@ -110,7 +126,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .round {
   position: relative;
   flex: none;
-  width: 38px; height: 38px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--card);
@@ -119,13 +135,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .round:active { background: var(--card-pressed); }
 .round svg {
-  width: 19px; height: 19px;
+  width: 18px; height: 18px;
   fill: none; stroke: var(--text);
   stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
 }
 
 .badge {
-  position: absolute; top: 4px; right: 4px;
+  position: absolute; top: 3px; right: 3px;
   width: 9px; height: 9px; border-radius: 50%;
   background: var(--fresh-bg);
   border: 1.5px solid var(--bg);
@@ -134,49 +150,67 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .track { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--track); }
 .bar { height: 100%; width: 0; background: var(--text); transition: width .25s ease; }
 
-/* ----------------------------------------------------------------- Chips */
-.chips {
+/* ----------------------------------------------------------------- Reiter
+
+   `top: var(--topbar-h)` ist die ganze Reparatur: Vorher klebten Kopfzeile
+   und Reiter beide bei 0, die Reiter lagen also dauerhaft hinter der
+   Kopfzeile. Wer die Rubrik wechseln wollte, musste erst ganz nach oben
+   scrollen. app.js misst die Höhe und schreibt sie hier hinein. */
+.chipbar {
   position: sticky;
-  top: 0;
+  top: var(--topbar-h, 64px);
   z-index: 15;
+  background: var(--bg);
+}
+.chipbar::after {
+  /* Zeigt, dass die Reiterzeile rechts weitergeht. */
+  content: ""; position: absolute; top: 0; bottom: 8px; right: 0; width: 30px;
+  background: linear-gradient(to right, transparent, var(--bg) 70%);
+  pointer-events: none;
+}
+.chips {
   display: flex;
   gap: 7px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 4px max(16px, env(safe-area-inset-left)) 12px;
-  background: var(--bg);
+  padding: 2px max(16px, env(safe-area-inset-left)) 10px;
 }
 .chips::-webkit-scrollbar { display: none; }
 
 .chip {
   flex: none;
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 13px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--chip-bg);
+  font-size: 14px; font-weight: 600;
   color: var(--muted);
-  font-size: 13.5px; font-weight: 600;
   white-space: nowrap;
 }
-.chip[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: var(--tint-text); }
 .chip .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
-.chip[aria-pressed="true"] .dot { display: none; }
-.chip .n { opacity: .6; font-variant-numeric: tabular-nums; }
+.chip svg { width: 13px; height: 13px; fill: currentColor; }
+.chip .n { font-size: 12.5px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: var(--tint-text); }
+.chip[aria-pressed="true"] .n { color: var(--tint-text); opacity: .65; }
 
-/* ---------------------------------------------------------------- Inhalt */
+/* ----------------------------------------------------------------- Inhalt */
 main {
-  padding: 0 max(16px, env(safe-area-inset-left)) calc(env(safe-area-inset-bottom) + 40px) max(16px, env(safe-area-inset-right));
+  padding: 4px max(16px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 40px) max(16px, env(safe-area-inset-left));
 }
 
-.pull {
-  height: 0;
-  overflow: hidden;
-  display: grid; place-items: center;
-  font-size: 12.5px; color: var(--faint);
-  transition: height .2s ease;
+.pull { height: 0; overflow: hidden; text-align: center; transition: height .2s; }
+.pull.armed { height: 26px; }
+#pull-label { font-size: 12.5px; color: var(--faint); }
+
+/* „7 neu seit deinem letzten Besuch" -- die Zeile, die aus „ich schau mal"
+   ein „ich schau kurz nach, was neu ist" macht. */
+.news {
+  margin: 2px 0 14px;
+  font-size: 13px; font-weight: 650;
+  color: var(--fresh-bg);
 }
-.pull.armed { height: 34px; }
+.count { margin: 0 0 12px; font-size: 12.5px; color: var(--faint); }
 
 /* ---- Aufmacher */
 .hero {
@@ -186,80 +220,213 @@ main {
   background: var(--card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  margin-bottom: 22px;
-  text-decoration: none;
-  color: inherit;
+  margin-bottom: 20px;
 }
-.hero:active { background: var(--card-pressed); }
+.hero-main { display: block; text-decoration: none; color: inherit; }
+.hero-main:active { background: var(--card-pressed); }
 .hero .shot { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: var(--skeleton); }
-.hero .body { padding: 14px 15px 16px; }
-.hero h2 { margin: 0 0 6px; font-size: 21px; line-height: 1.24; font-weight: 700; letter-spacing: -.2px; text-wrap: balance; }
-.hero p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.hero .body { padding: 13px 15px 2px; }
+/* Sagt, warum ausgerechnet diese Meldung oben steht. */
+.hero .kicker {
+  display: block;
+  font-size: 10px; font-weight: 800; letter-spacing: .9px;
+  color: var(--fresh-bg);
+  margin-bottom: 5px;
+}
+.hero h2 { margin: 0 0 5px; font-size: 20px; line-height: 1.24; font-weight: 700; letter-spacing: -.2px; text-wrap: balance; }
+.hero p {
+  margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hero-foot { padding: 0 15px 11px; }
+.hero.seen h2 { color: var(--muted); }
+.hero.seen .shot { opacity: .6; }
 
-/* ---- Rubrik-Abschnitte */
-.group { margin-bottom: 26px; }
-.group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.group-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+/* ---- Rubriken */
+.group { margin-bottom: 22px; }
+.group-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 9px;
+  padding-left: 9px;
+  /* Die Rubrikfarbe als Balken statt als 6-Pixel-Punkt: So trägt sie
+     wirklich Information, statt nur bunt zu sein. */
+  border-left: 3px solid var(--accent, var(--border));
+}
+.group-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--accent, var(--faint)); }
+.group-head .group-dot { display: none; }
 .group-head h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.1px; }
-.group-head .n { margin-left: auto; font-size: 13px; color: var(--faint); font-variant-numeric: tabular-nums; }
+/* Statt einer nackten Zahl, die nie mit dem Reiter übereinstimmte: der Weg
+   in die vollständige Rubrik. */
+.group-head .more { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 
-.cards { display: flex; flex-direction: column; gap: 10px; }
+.cards { display: flex; flex-direction: column; gap: 9px; }
 
+/* ---- Karte
+
+   Aufbau: ein Kasten, darin ein Link (Überschrift, Anriss, Bild) und darunter
+   die Zeile mit Quelle und Lesezeichen. Das Lesezeichen *neben* dem Link und
+   nicht darin -- ein Knopf in einem Link ist weder gültiges HTML noch auf dem
+   Handy sicher zu treffen. */
 .card {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: start;
-  padding: 13px 14px;
   border-radius: 14px;
   background: var(--card);
   border: 1px solid var(--border);
+  padding: 11px 13px 7px;
+}
+.card-main {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 11px;
+  /* stretch statt start: Das Vorschaubild füllt die Höhe des Textes. Vorher
+     stand es oben rechts und daneben blieb eine leere Ecke. */
+  align-items: stretch;
   text-decoration: none;
   color: inherit;
 }
-.card:active { background: var(--card-pressed); }
-.card h3 { margin: 0 0 4px; font-size: 15.5px; line-height: 1.33; font-weight: 650; letter-spacing: -.1px; }
-.card p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
-.card .thumb { width: 78px; height: 78px; border-radius: 10px; object-fit: cover; background: var(--skeleton); flex: none; }
+.card-main:active { opacity: .65; }
+.card .text { min-width: 0; }
+.card h3 { margin: 0 0 3px; font-size: 15px; line-height: 1.32; font-weight: 650; letter-spacing: -.1px; }
+.card p {
+  margin: 0; font-size: 13.2px; line-height: 1.42; color: var(--muted);
+  /* Zwei Zeilen reichen. Vorher liefen vier Zeilen Anriss unter jeder
+     Überschrift und es passten anderthalb Meldungen auf den Bildschirm. */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card .thumb {
+  width: 80px; height: 100%; min-height: 62px;
+  border-radius: 9px; object-fit: cover;
+  background: var(--skeleton); flex: none;
+  align-self: stretch;
+}
+.card.seen { background: var(--bg); }
+.card.seen h3 { color: var(--muted); font-weight: 600; }
+.card.seen .thumb, .card.seen .shot { opacity: .55; }
 
-/* Videos bekommen ein breites Vorschaubild statt einer kleinen Kachel. */
-.card.video { grid-template-columns: 1fr; }
-.card.video .shot { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: var(--skeleton); margin-bottom: 10px; position: relative; }
-.card.video .frame { position: relative; }
-.card.video .play {
+.card.video .card-main { grid-template-columns: 1fr; }
+.card.video .frame { position: relative; margin-bottom: 9px; }
+.card.video .shot { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: var(--skeleton); display: block; }
+.card.video .play, .top .play {
   position: absolute; inset: 0; margin: auto;
-  width: 46px; height: 46px; border-radius: 50%;
+  width: 44px; height: 44px; border-radius: 50%;
   background: rgba(17, 17, 20, .62);
   display: grid; place-items: center;
-  backdrop-filter: blur(2px);
 }
-.card.video .play svg { width: 17px; height: 17px; fill: #fff; margin-left: 2px; }
+.card.video .play svg, .top .play svg { width: 16px; height: 16px; fill: #fff; margin-left: 2px; }
+/* Laufzeit im Bild: Damit ein Video nicht mehr aussieht wie ein Textbeitrag. */
+.card.video .len, .top .len {
+  position: absolute; right: 6px; bottom: 6px;
+  font-size: 11px; font-weight: 700; color: #fff;
+  background: rgba(0, 0, 0, .75);
+  border-radius: 4px; padding: 1px 4px;
+  font-variant-numeric: tabular-nums;
+}
 
-.meta { display: flex; align-items: center; gap: 7px; margin-top: 7px; font-size: 11.5px; color: var(--faint); flex-wrap: wrap; }
+/* ---- Zeile unter der Karte */
+.meta {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 6px;
+  font-size: 11.5px; color: var(--faint);
+  flex-wrap: wrap;
+}
 .meta .src { font-weight: 600; color: var(--muted); }
+/* „auch bei Pinkbike, MTB-News" -- aus drei Karten über dasselbe Rennen wird
+   eine Karte mit einer Zeile. */
+.meta .also {
+  font-style: italic;
+  /* Eigene Zeile: Sonst schiebt eine lange Quellenliste das Lesezeichen nach
+     unten und die Karte bekommt eine Zeile, die aus nichts besteht. */
+  flex-basis: 100%;
+  order: 2;
+}
+.meta .save {
+  order: 1;
+  margin-left: auto;
+  flex: none;
+  width: 30px; height: 30px;
+  margin: -4px -6px -4px auto;
+  display: grid; place-items: center;
+  border-radius: 50%;
+}
+.meta .save svg { width: 15px; height: 15px; fill: none; stroke: var(--faint); stroke-width: 1.8; stroke-linejoin: round; }
+.meta .save.on svg { fill: var(--fresh-bg); stroke: var(--fresh-bg); }
+.meta .save:active { background: var(--card-pressed); }
+
 .tag { font-size: 9.5px; font-weight: 800; letter-spacing: .7px; padding: 2px 5px; border-radius: 4px; border: 1px solid var(--border); }
 .tag.new { background: var(--fresh-bg); color: var(--fresh-text); border-color: transparent; }
 
-/* ---- Terminstreifen */
-.strip { margin-bottom: 20px; }
-.strip-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
+/* ---- Kompakte Darstellung: nur Überschrift und Zeile darunter. */
+body.dense .card { padding: 9px 12px 6px; }
+body.dense .cards { gap: 7px; }
+body.dense .card h3 { font-size: 14.5px; }
+body.dense .card .thumb { width: 62px; min-height: 48px; }
+body.dense .hero h2 { font-size: 18px; }
+body.dense .group { margin-bottom: 17px; }
+
+/* ---- Streifen (Termine und Top 10) */
+.strip { margin-bottom: 18px; }
+.strip-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
 .strip-head h2 { margin: 0; font-size: 11.5px; font-weight: 800; letter-spacing: .9px; color: var(--faint); }
 .strip-head button { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.strip-head .note { font-size: 12.5px; color: var(--faint); }
 .rail { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .rail::-webkit-scrollbar { display: none; }
+
 .ev {
-  flex: none; width: 205px;
-  padding: 12px;
+  flex: none; width: 200px;
+  padding: 11px 12px;
   border-radius: 14px;
   background: var(--card);
   border: 1px solid var(--border);
   text-align: left;
 }
 .ev.now { border-width: 1.5px; }
-.ev .when { font-size: 11.5px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.ev .when { font-size: 11.5px; font-weight: 800; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
 .ev .when .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.ev h3 { margin: 0 0 6px; font-size: 14.5px; font-weight: 650; line-height: 1.3; }
+.ev h3 { margin: 0 0 5px; font-size: 14.5px; font-weight: 650; line-height: 1.3; }
 .ev p { margin: 0; font-size: 12px; line-height: 1.4; color: var(--faint); }
+
+/* ---- Top 10 der Videoszene */
+.top { flex: none; width: 222px; text-decoration: none; color: inherit; }
+.top .frame { position: relative; }
+.top .shot {
+  display: block; width: 100%; aspect-ratio: 16 / 9;
+  object-fit: cover; border-radius: 10px; background: var(--skeleton);
+}
+.top .rank {
+  position: absolute; left: 7px; bottom: 5px;
+  font-size: 22px; font-weight: 800; line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  /* Zwei Schatten: Der harte trennt die Ziffer vom Bild, der weiche gibt ihr
+     auch auf hellem Himmel noch einen Rand. */
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7);
+}
+.top h3 {
+  margin: 8px 0 3px;
+  font-size: 14px; font-weight: 650; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.top p { margin: 0; font-size: 12px; line-height: 1.4; color: var(--faint); }
+.top .num { display: flex; align-items: center; gap: 8px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.top .likes { display: inline-flex; align-items: center; gap: 3px; }
+.top .likes svg { width: 11px; height: 11px; fill: currentColor; }
+.top .play { width: 36px; height: 36px; }
+.top .play svg { width: 13px; height: 13px; }
+.top:active { opacity: .7; }
+
+/* ---- Nach oben */
+.fab {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(env(safe-area-inset-bottom) + 18px);
+  z-index: 30;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--tint);
+  display: grid; place-items: center;
+  box-shadow: 0 6px 20px -6px rgba(0,0,0,.45);
+}
+.fab svg { width: 20px; height: 20px; fill: none; stroke: var(--tint-text); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fab:active { opacity: .75; }
 
 /* ---------------------------------------------------------------- Zettel */
 .sheet {
@@ -274,14 +441,36 @@ main {
 .sheet-head {
   display: flex; align-items: flex-start; gap: 12px;
   padding: calc(env(safe-area-inset-top) + 14px) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
-  border-bottom: 1px solid var(--border);
 }
+.sheet-titles { min-width: 0; }
 .sheet-head h2 { margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.4px; }
 .sheet-sub { margin: 1px 0 0; font-size: 12.5px; color: var(--faint); }
 .text-btn { margin-left: auto; font-size: 16px; font-weight: 600; padding: 4px 2px; }
 
+/* Ein Feld, zwei Aufgaben: In der Suche sucht es Meldungen, in den
+   Einstellungen Quellen. Es steht außerhalb des Rumpfes, damit das Neuzeichnen
+   der Trefferliste die Eingabemarke nicht wegnimmt. */
+.sheet-find {
+  padding: 0 max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+}
+.sheet-find input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 16px;   /* kleiner, und iOS zoomt beim Antippen hinein */
+  -webkit-appearance: none;
+}
+.sheet-find input::placeholder { color: var(--faint); }
+/* Der rote Fokusrahmen aus der App sieht auf einem Eingabefeld aus wie eine
+   Fehlermeldung. Hier reicht ein ruhiger Rahmen. */
+.sheet-find input:focus-visible { outline: 2px solid var(--text); outline-offset: 0; }
+
 .sheet-body {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  border-top: 1px solid var(--border);
   padding: 16px max(16px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 40px) max(16px, env(safe-area-inset-left));
 }
 
@@ -289,18 +478,28 @@ main {
 .month { font-size: 11.5px; font-weight: 800; letter-spacing: .9px; color: var(--faint); margin: 22px 0 8px; }
 .month:first-child { margin-top: 0; }
 .block { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--card); }
-.ev-row { display: flex; gap: 12px; padding: 12px; width: 100%; text-align: left; align-items: flex-start; }
 .ev-row + .ev-row { border-top: 1px solid var(--border); }
-.ev-row:active { background: var(--card-pressed); }
+.ev-open { display: flex; gap: 12px; padding: 12px 12px 8px; width: 100%; text-align: left; align-items: flex-start; }
+.ev-open:active { background: var(--card-pressed); }
 .date { width: 46px; flex: none; padding: 6px 0; border-radius: 10px; text-align: center; }
-.date .d { font-size: 19px; font-weight: 750; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.date .w { font-size: 11px; font-weight: 600; color: var(--faint); }
+.date .d { font-size: 19px; font-weight: 750; line-height: 1.15; font-variant-numeric: tabular-nums; display: block; }
+.date .w { display: block; font-size: 11px; font-weight: 600; line-height: 1.1; color: var(--faint); }
 .date.now .d, .date.now .w { color: #fff; }
 .ev-row .kind { font-size: 9.5px; font-weight: 800; letter-spacing: .7px; }
+.ev-row .count-down { font-size: 11.5px; font-weight: 600; }
 .ev-row h3 { margin: 2px 0 3px; font-size: 15.5px; font-weight: 650; line-height: 1.3; }
 .ev-row p { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .ev-row .note { color: var(--faint); margin-top: 3px; }
 .ev-row .unsure { color: var(--warn-text); font-weight: 600; margin-top: 4px; }
+/* Der Termin wandert in den Kalender des Telefons -- vorher war er eine
+   Sackgasse, die man von Hand abtippen musste. */
+.ics {
+  display: block; margin: -2px 12px 10px 70px;
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+  padding: 4px 0;
+}
+.ics::before { content: "+ "; font-weight: 700; }
+.ics:active { opacity: .5; }
 
 /* ---- Einstellungen */
 .sec { font-size: 11.5px; font-weight: 800; letter-spacing: .9px; color: var(--faint); margin: 22px 0 7px; }
@@ -309,31 +508,47 @@ main {
 .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; width: 100%; text-align: left; }
 .row + .row { border-top: 1px solid var(--border); }
 .row .label { flex: 1; min-width: 0; }
-.row .label b { display: block; font-size: 15px; font-weight: 600; }
-.row .label span { display: block; font-size: 12.5px; color: var(--faint); line-height: 1.4; margin-top: 2px; }
+.row .label b { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; font-weight: 600; }
+/* Vorher traf diese Regel auch das kleine EN-Fähnchen im fetten Teil: Es
+   wurde zum leeren Kasten über die ganze Zeilenbreite und sah aus wie ein
+   Eingabefeld. Jetzt nur noch der graue Zusatztext. */
+.row .label .note { display: block; font-size: 12.5px; color: var(--faint); line-height: 1.4; margin-top: 2px; }
 
-.sw { flex: none; width: 50px; height: 30px; border-radius: 999px; background: var(--track); position: relative; transition: background .18s; }
-.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .18s; }
-.sw[aria-checked="true"] { background: #34c759; }
-.sw[aria-checked="true"]::after { transform: translateX(20px); }
+.sw { flex: none; width: 48px; height: 29px; border-radius: 999px; background: var(--track); position: relative; transition: background .18s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 23px; height: 23px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .18s; }
+/* Schwarz statt iOS-Grün: Die 199 grünen Schieber waren der einzige
+   Fremdkörper in einer sonst schwarz-weiß-roten App. */
+.sw[aria-checked="true"] { background: var(--tint); }
+.sw[aria-checked="true"]::after { transform: translateX(19px); background: var(--tint-text); }
 
-.steps { display: flex; gap: 7px; flex-wrap: wrap; }
+.steps { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }
 .step { padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--chip-bg); font-size: 13.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .step[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: var(--tint-text); }
 
-.topic-head { display: flex; align-items: center; gap: 8px; margin: 18px 0 7px; }
+/* ---- Aufklappbare Rubriken in der Quellenliste */
+.topic-head { display: flex; align-items: center; gap: 8px; margin: 14px 0 7px; }
+.topic-toggle { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; text-align: left; padding: 4px 0; }
 .topic-head b { font-size: 14px; font-weight: 700; }
-.topic-head button { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.topic-head .n { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.topic-head .bulk { font-size: 12.5px; font-weight: 600; color: var(--muted); flex: none; }
+.chev {
+  flex: none; width: 7px; height: 7px;
+  border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
+  transform: rotate(-45deg); margin-left: 2px;
+  transition: transform .15s;
+}
+.topic-head.open .chev { transform: rotate(45deg); }
 
 /* -------------------------------------------------------------- Zustände */
-.banner { border-radius: 14px; background: var(--warn-bg); color: var(--warn-text); padding: 13px 15px; margin-bottom: 18px; }
+.banner { border-radius: 14px; background: var(--warn-bg); color: var(--warn-text); padding: 13px 15px; margin-bottom: 16px; }
 .banner b { display: block; font-size: 14.5px; margin-bottom: 3px; }
 .banner span { font-size: 13.5px; line-height: 1.45; }
 
-.blank { text-align: center; padding: 54px 20px 40px; }
+.blank { text-align: center; padding: 48px 20px 36px; }
 .blank b { display: block; font-size: 18px; font-weight: 700; margin-bottom: 7px; }
 .blank p { margin: 0 auto 18px; font-size: 14.5px; line-height: 1.5; color: var(--muted); max-width: 34ch; }
 .cta { background: var(--tint); color: var(--tint-text); font-size: 15px; font-weight: 650; padding: 11px 22px; border-radius: 999px; }
+.cta.wide { display: block; width: 100%; margin: 4px 0 10px; }
 
 .skel { border-radius: 14px; background: var(--skeleton); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
@@ -344,7 +559,7 @@ main {
 
 /* Auf breiten Schirmen nicht über die ganze Breite laufen lassen. */
 @media (min-width: 720px) {
-  .topbar, .chips, main, .sheet-head, .sheet-body { max-width: 680px; margin-inline: auto; }
+  .topbar, .chipbar, main, .sheet-head, .sheet-find, .sheet-body { max-width: 680px; margin-inline: auto; }
   .cards { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
   .card.video { grid-column: 1 / -1; }
 }

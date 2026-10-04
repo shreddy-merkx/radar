@@ -113,8 +113,10 @@ sortieren.**
 | `localFilter.js` | Bewerten, mischen, kürzen |
 | `events.js` | Terminkalender, 55 Termine |
 | `i18n.js` | Oberflächentexte in sechs Sprachen |
+| — | **Gebündelt wird nur `kind: 'article'`.** Zwei Videos mit ähnlichem Titel sind zwei Filme, keine doppelte Meldung — sie zusammenzuwerfen macht einen davon unsichtbar |
 | `fetch.mjs` | Der Einsammler |
-| `rss.mjs` | Abruf und XML-Auswertung |
+| `rss.mjs` | Abruf und XML-Auswertung. **`canonicalLink` nie wieder durch `link.split('?')[0]` ersetzen** — bei YouTube steht die Videonummer in der Abfrage, und mit dem alten Code überlebte von 69 Kanälen genau ein Video pro Lauf |
+| `youtube.mjs` | Top 10 der Videoszene. Freiwillig: ohne `YOUTUBE_API_KEY` gibt es `null` zurück, `fetch.mjs` fängt jeden Fehler ab, die App lässt den Abschnitt weg. Fragt nicht die YouTube-Suche (100 Punkte pro Aufruf), sondern nur die Zahlen zu Videonummern, die aus den Kanal-Feeds ohnehin anfallen (1 Punkt pro 50 Videos, ~200 von 10.000 Punkten am Tag) |
 
 `sources.js`, `localFilter.js` und `events.js` wurden per
 `node:module.stripTypeScriptTypes` aus dem alten TypeScript erzeugt --

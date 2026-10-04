@@ -48,6 +48,120 @@ Eigenname.
 
 ---
 
+## Was Radar jetzt anders macht
+
+Eine Runde Selbstkritik, umgesetzt. Das Wichtigste zuerst:
+
+**Ein Reiter zeigt jetzt die ganze Rubrik.** Vorher war „MTB" nur ein Filter
+über die dreißig Meldungen der Frontpage — man tippte drauf und bekam drei.
+Jetzt kommt die vollständige Rubrik, nach Aktualität, mit **Mehr laden** am
+Ende. Die Startseite bleibt die kuratierte Mischung; die Reiter sind das
+Nachschlagewerk.
+
+**Dieselbe Meldung steht nur noch einmal da.** 199 Quellen schreiben über
+dasselbe Rennen. Radar erkennt das jetzt nicht mehr nur bei gleichlautenden
+Überschriften, sondern an den Wörtern, die etwas bedeuten — aus fünf Karten
+wird eine mit der Zeile „auch bei Cyclingnews, road.cc und 3 weiteren".
+Schaltest du die Hauptquelle ab, rückt eine der anderen nach.
+
+**Suche.** Lupe oben rechts. Durchsucht alles, was geladen ist — auch die
+Meldungen, die es nicht auf die Frontpage geschafft haben, und auch die, die
+älter sind als das eingestellte Zeitfenster.
+
+**Gemerkt.** Das Lesezeichen an jeder Karte legt eine Meldung beiseite. Sie
+bleibt dort, auch wenn die Quelle sie längst aus ihrem Feed geschoben hat —
+abgelegt wird die Meldung selbst, nicht nur ihre Adresse.
+
+**Radar merkt sich, was du gelesen hast.** Gelesene Karten treten zurück, und
+oben steht, wie viel seit deinem letzten Besuch dazugekommen ist.
+
+**Doppelt so viel auf einem Bildschirm.** Anrisstexte, die nur die Überschrift
+wiederholen, fallen weg; der Rest ist auf zwei Zeilen gekürzt. Wer es noch
+enger mag: **Einstellungen → Darstellung → Kompakt**.
+
+**Termine wandern in deinen Kalender.** Unter jedem Termin steht
+„+ In meinen Kalender". Außerdem sagt die Liste jetzt selbst, bis wann sie
+reicht — sie ist von Hand gepflegt und endet irgendwann.
+
+Dazu repariert: Die Rubrik-Reiter verschwanden beim Scrollen hinter der
+Kopfzeile, das „EN" in der Quellenliste wurde zu einem leeren Kasten über die
+ganze Breite, die Zahl im Reiter stimmte nie mit der Zahl in der Rubrik
+überein, und das Zahnrad sah aus wie ein Umschalter für hell und dunkel. Die
+199 giftgrünen Schalter sind jetzt schwarz, die Quellenliste klappt zusammen
+und lässt sich durchsuchen, und nach langem Scrollen bringt ein Knopf unten
+rechts zurück nach oben.
+
+> **Ein Fehler, der nichts mit dem Aussehen zu tun hatte:** Beim Erkennen
+> doppelter Beiträge hat Radar alles hinter dem Fragezeichen einer Adresse
+> abgeschnitten. Bei YouTube steht die Videonummer genau dort
+> (`watch?v=…`) — alle 69 Kanäle sahen damit gleich aus, und von sämtlichen
+> Videos überlebte pro Lauf **ein einziges**. Deshalb war „Szene & Videos"
+> immer so leer. Jetzt fliegen nur noch Zählpixel und Kampagnen-Anhängsel
+> raus. Aus 200 gefundenen Meldungen wurden damit knapp 400.
+
+---
+
+## Top 10 der Videoszene — freiwillig
+
+Unter dem Aufmacher steht ein Streifen **„Meistgesehen"**: die zehn
+meistgesehenen Videos der letzten sieben Tage aus den 69 YouTube-Kanälen, die
+Radar ohnehin schon liest. In der Rubrik **Szene & Videos** steht er ganz oben.
+
+Dafür braucht Radar einen Schlüssel von Google. Der ist **kostenlos und ohne
+Kreditkarte** — Google will dafür keine Zahlungsdaten. Ohne Schlüssel läuft
+alles wie bisher, der Streifen bleibt einfach weg.
+
+> **Warum das nichts kostet und auch nicht ausfallen kann:** Google gibt 10.000
+> Punkte am Tag her. Suchen wäre teuer (100 Punkte pro Suche), deshalb sucht
+> Radar nicht: Die Videonummern hat es aus den Kanal-Feeds schon, es fragt nur
+> die Zahlen dazu ab — bis zu 50 Videos für **einen** Punkt. Macht rund 200
+> Punkte am Tag. Von 10.000.
+
+### Den Schlüssel holen — einmalig, etwa 5 Minuten
+
+1. **console.cloud.google.com** öffnen und mit dem Google-Konto anmelden.
+2. Oben in der blauen Leiste auf die Projektauswahl → **Neues Projekt** →
+   Name `Radar` → **Erstellen**. Kurz warten, bis es oben ausgewählt ist.
+3. Links **APIs und Dienste** → **Bibliothek**. Oben `YouTube Data API v3`
+   eintippen, draufklicken, **Aktivieren**.
+4. Links **Anmeldedaten** → oben **Anmeldedaten erstellen** → **API-Schlüssel**.
+5. Der Schlüssel erscheint in einem Fenster. **Kopieren.**
+
+Falls Google zwischendurch nach einem Zweck fragt: „Öffentliche Daten" oder
+„Public data" anklicken. Nach Geld fragt es nicht.
+
+### Den Schlüssel bei GitHub hinterlegen
+
+Der Schlüssel darf **nicht** in eine Datei — die sind öffentlich. Er kommt an
+die Stelle, die GitHub genau dafür hat:
+
+1. Im Projekt oben auf **Settings**
+2. Links **Secrets and variables** → **Actions**
+3. **New repository secret**
+4. **Name:** genau `YOUTUBE_API_KEY` (Großbuchstaben, mit Unterstrichen)
+5. **Secret:** den kopierten Schlüssel einfügen
+6. **Add secret**
+
+Danach einmal **Actions** → **Run workflow**. Beim nächsten Öffnen der App ist
+der Streifen da.
+
+### Wenn der Streifen nicht erscheint
+
+Unter **Actions** den letzten Lauf anklicken und beim Schritt „Feeds abrufen"
+nach der Zeile `Top 10:` schauen. Dort steht im Klartext, was los ist:
+
+| Zeile | Bedeutung |
+|---|---|
+| `Top 10: ausgelassen (kein YOUTUBE_API_KEY hinterlegt)` | Das Secret fehlt oder heißt anders |
+| `Top 10 ausgelassen: HTTP 400 (badRequest)` | Schlüssel falsch kopiert |
+| `Top 10 ausgelassen: HTTP 403 (accessNotConfigured)` | Schritt 3 fehlt: YouTube Data API v3 ist nicht aktiviert |
+| `Top 10 ausgelassen: HTTP 403 (quotaExceeded)` | Tagesbudget leer — sollte nicht vorkommen, dann stimmt etwas mit dem Projekt nicht |
+
+In allen diesen Fällen läuft Radar ganz normal weiter, nur ohne den Streifen.
+Ausschalten lässt er sich auch von Hand: **Einstellungen → Top 10**.
+
+---
+
 ## Einrichten — einmalig, etwa 10 Minuten
 
 ### 1. Neues Projekt bei GitHub anlegen
@@ -139,6 +253,8 @@ der Menüpunkt **Zum Startbildschirm hinzufügen**.
 
 ## Für später
 
+- **Mehr als zehn Videos**, oder Shorts dazunehmen: steht oben in
+  `youtube.mjs`, zwei Zahlen.
 - **Zusammenfassungen durch eine KI.** Ginge jetzt sogar besser als vorher:
   beim Bauen einmal für alle, statt auf jedem Gerät einzeln. Braucht einen
   kostenlosen Google-Gemini-Schlüssel als *Secret* im Projekt.
@@ -165,6 +281,7 @@ passieren.
 | `sources.js`, `localFilter.js`, `events.js` | Quellen, Filterlogik, Termine — aus der bisherigen App übernommen |
 | `i18n.js` | Alle Texte der Bedienung in sechs Sprachen |
 | `fetch.mjs`, `rss.mjs` | Holen die Feeds, schreiben `data/digest.json` |
+| `youtube.mjs` | Die Top 10 der Videoszene — ohne Schlüssel wirkungslos |
 | `.github/workflows/build.yml` | Der Zeitplan: alle 30 Minuten, plus bei jeder Änderung |
 
 `data/digest.json` steht bewusst nicht im Projekt — die Datei entsteht bei
