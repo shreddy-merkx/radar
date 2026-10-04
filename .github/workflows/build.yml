@@ -48,6 +48,11 @@ jobs:
 
       - name: Feeds abrufen und digest.json schreiben
         run: node fetch.mjs
+        env:
+          # Freiwillig. Ist unter Settings -> Secrets kein YOUTUBE_API_KEY
+          # hinterlegt, ist diese Zeile leer, der Lauf geht normal durch und
+          # die App laesst den Top-10-Streifen einfach weg.
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
 
       - name: Bauzeug wegräumen
         # Die Bausteine werden nur zum Einsammeln gebraucht und haben auf der
